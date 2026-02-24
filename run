@@ -1,0 +1,21 @@
+#!/bin/bash
+
+MODE="$1"
+
+PYTHON="python3"
+SCRIPT="binance_future_bot.py"
+LOGFILE="bot_eth.log"
+
+case "$MODE" in
+    daemon)
+        echo "[INFO] Running in background..."
+        nohup $PYTHON $SCRIPT >> $LOGFILE 2>&1 &
+        echo "[INFO] PID: $!"
+        ;;
+
+    *)
+        echo "[INFO] Running in foreground..."
+        $PYTHON $SCRIPT
+        ;;
+esac
+
