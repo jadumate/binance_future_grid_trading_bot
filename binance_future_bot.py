@@ -45,12 +45,12 @@ ORDER_USDT    = 150         # Notional value per order (USDT); margin used = ORD
 POLL_INTERVAL = 10          # Polling interval (seconds)
 
 # When the last fill was a SELL
-SELL_AFTER_SELL = [0.01, 0.02]    # SELL order offsets (multiplied by consecutive SELL count)
-BUY_AFTER_SELL  = [-0.005, -0.01]  # BUY order offsets
+SELL_AFTER_SELL = [0.007, 0.015]    # SELL order offsets (multiplied by consecutive SELL count)
+BUY_AFTER_SELL  = [-0.007, -0.015]  # BUY order offsets
 
 # When the last fill was a BUY
-SELL_AFTER_BUY  = [0.005, 0.01]    # SELL order offsets
-BUY_AFTER_BUY   = [-0.01, -0.02]  # BUY order offsets (multiplied by consecutive BUY count)
+SELL_AFTER_BUY  = [0.007, 0.015]    # SELL order offsets
+BUY_AFTER_BUY   = [-0.007, -0.015]  # BUY order offsets (multiplied by consecutive BUY count)
 
 # ============================================================
 # URLs
@@ -454,7 +454,8 @@ def run():
                 cancel_all_orders()
                 wait_orders_cleared()
                 place_grid_orders(last_side, last_price, consecutive_sell_count, consecutive_buy_count)
-                send_telegram(f"[{SYMBOL}] order completed : {last_price:,.0f}")
+                consec_count = consecutive_sell_count if last_side == "SELL" else consecutive_buy_count
+                send_telegram(f"[{SYMBOL}] order completed : {last_price:,.0f}\nContinues {consec_count} {last_side}")
 
             else:
                 log.info("Orders healthy")
