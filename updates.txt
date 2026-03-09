@@ -1,0 +1,7 @@
+## 2026-03-09
+- Added hourly BTC OHLC data collection to binance_future_bot.py
+  - Samples get_current_price() every 10s (existing poll cycle, no extra API calls)
+  - Accumulates start/high/low/end within each hour bucket
+  - On hour rollover, saves completed candle to bitcoin1h.db (SQLite)
+  - datetime format: YYYYMMDDH H (e.g. 2026030916)
+  - Schema: datetime (PK), start, high, low, end

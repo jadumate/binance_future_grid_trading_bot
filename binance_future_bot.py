@@ -16,6 +16,8 @@ import math
 import logging
 import os
 import sys
+import sqlite3
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import requests
@@ -59,6 +61,37 @@ if USE_TESTNET:
     BASE_URL = "https://testnet.binancefuture.com"
 else:
     BASE_URL = "https://fapi.binance.com"
+
+# ============================================================
+# Bitcoin 1h OHLC DB
+# ============================================================
+DB_PATH = os.path.join(os.path.dirname(__file__), "bitcoin1h.db")
+
+def _db_init():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS btc_1h (
+            datetime TEXT PRIMARY KEY,   -- e.g. 2026030916
+            start    REAL,
+            high     REAL,
+            low      REAL,
+            end      REAL
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def _db_save_candle(dt_str: str, start: float, high: float, low: float, end: float):
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute(
+        "INSERT OR REPLACE INTO btc_1h (datetime, start, high, low, end) VALUES (?,?,?,?,?)",
+        (dt_str, start, high, low, end)
+    )
+    conn.commit()
+    conn.close()
+    log.info("1h candle saved: %s  start=%.2f high=%.2f low=%.2f end=%.2f",
+             dt_str, start, high, low, end)
+
 
 # ============================================================
 # Logging
@@ -424,9 +457,40 @@ def run():
 
     # Set leverage on startup
     set_leverage()
+    _db_init()
+
+    # Hourly OHLC accumulator
+    _h_bucket: str        = ""
+    _h_start:  float      = 0.0
+    _h_high:   float      = 0.0
+    _h_low:    float      = float("inf")
+    _h_last:   float      = 0.0
 
     while True:
         try:
+            # ---- price sampling for 1h candle ----
+            price = get_current_price()
+            bucket = datetime.fromtimestamp(time.time(), tz=timezone.utc).strftime("%Y%m%d%H")
+
+            if _h_bucket == "":
+                # first tick
+                _h_bucket = bucket
+                _h_start  = price
+                _h_high   = price
+                _h_low    = price
+            elif bucket != _h_bucket:
+                # hour rolled over — save completed candle
+                _db_save_candle(_h_bucket, _h_start, _h_high, _h_low, _h_last)
+                _h_bucket = bucket
+                _h_start  = price
+                _h_high   = price
+                _h_low    = price
+            else:
+                if price > _h_high: _h_high = price
+                if price < _h_low:  _h_low  = price
+            _h_last = price
+            # --------------------------------------
+
             open_orders  = get_open_orders()
             order_count  = len(open_orders)
             log.info("Open orders: %d", order_count)
